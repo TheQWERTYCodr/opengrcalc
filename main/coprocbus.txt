@@ -1,0 +1,15 @@
+2 srams
+p1      r1      r2      p2
+no	==>	no
+no		0	<=>	no
+no				no	==>	no
+i1	==>	i1		no		no
+i1		no	<=>	i1		no
+i1		no		i1	==>	i1
+i2	==>	i2		r1	<==	i1
+i2		r1	<=>	i2		i1
+r1	<==	r1		i2	==>	i2
+i3		r1		r2	<==	i2
+i3	==> i3		r2		i2
+i3		r2	<=>	i3		i2
+i3	<==	r2		i3	==>	i3

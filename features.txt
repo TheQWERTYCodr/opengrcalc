@@ -1,0 +1,5 @@
+wifi
+bluetooth
+secure testing
+256 btns (max)
+32 gpios

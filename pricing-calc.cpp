@@ -1,4 +1,5 @@
 #include <array>
+#include <initializer_list>
 #include <string>
 #include <variant>
 #include <list>
@@ -38,6 +39,7 @@ public:
     }
     pricemap() : underlying() {}
     pricemap(std::map<inttype,pricetype> x) : underlying(x) {}
+    pricemap(std::initializer_list<std::pair<const inttype,pricetype>> x) : pricemap(std::map<inttype,pricetype>(x)) {}
     pricetype& operator[](inttype i) {
         if (i<0) {
             // maybe we can add sell support in the future, but until then:
@@ -111,7 +113,7 @@ public:
                 prices[y.first] = 0;
             }
         }
-        auto prices_dup = this->prices; // copy because otherwise it segfaults
+        auto prices_dup = this->prices; // copy because otherwise it segfaults (due to iterator invalidation)
         for (auto x : prices_dup) {
             for (auto y : this->reqs) {
                 try
@@ -128,7 +130,90 @@ public:
     }
 };
 std::vector<item> items;
+auto resistor_1k = item("Resistor - 1K", {
+    {1,10},
+    {10,20},
+    {50,63},
+    {100,105},
+    {500,356},
+    {1000,612},
+    {5000,2225},
+    {10000,3940},
+    {25000,8425},
+    {35000,11480},
+    {50000,15250},
+    {125000,34625}
+});
+auto resistor_27 = item("Resistor - 27", {
+    {1,10},
+    {10,21},
+    {50,66},
+    {100,110},
+    {500,372},
+    {1000,639},
+    {5000,2320},
+    {10000,4100},
+    {25000,8800},
+    {35000,11970},
+    {50000,15900},
+    {125000,36000}
+});
+auto resistor_10k = item("Resistor - 10K", {
+    {1,10},
+    {10,20},
+    {50,62},
+    {100,103},
+    {500,350},
+    {1000,601},
+    {5000,2180},
+    {10000,3860},
+    {25000,8275},
+    {35000,11270},
+    {50000,14950},
+    {125000,33875}
+});
+auto resistor_5k1 = item("Resistor - 5K1",{
+    {1,10},
+    {10,21},
+    {50,66},
+    {100,110},
+    {500,372},
+    {1000,639},
+    {5000,2320},
+    {10000,4100},
+    {25000,8800},
+    {35000,11970},
+    {50000,15900},
+    {125000,36000}
+});
+auto resistor_2k = item("Resistor - 2K",{
+    {1,10},
+    {10,21},
+    {50,66},
+    {100,110},
+    {500,372},
+    {1000,639},
+    {5000,2320},
+    {10000,4100},
+    {25000,8800},
+    {35000,11970},
+    {50000,15900},
+    {125000,36000}
+});
+auto button = item("Button",{
+    {1,15},
+    {10,146},
+    {25,346},
+    {100,1258},
+    {250,2956},
+    {500,5408},
+    {1500,13583},
+    {3000,26412},
+    {7500,62258},
+    {10500,81879}
+});
 int main(int argc, char *argv[]) {
+    /*
     auto proc_1 = item("esp32-s3-wroom-1u",pricemap({{1,300},{10,2800},{100,25000}}));
     auto proc_any = anyreq("any processor",{proc_1});
     auto coproc_any = anyreq("any coprocessor",{proc_1});
@@ -149,11 +234,13 @@ int main(int argc, char *argv[]) {
     auto btn_any = anyreq("any button",{btn_1,btn_2,btn_3,btn_4});
     auto btn_x128 = multreq("128x any button",btn_any,128);
     auto calculator_1 = allreq("calculator w/ proc, coproc, 256Mb QSPI, shift register, 128 btns, lcd, and pcb",{proc_any,coproc_any,qspi_any,shiftregister_any,btn_x128,lcd_any,pcb_any});
+    
     for (int count : {5,10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,200000,500000}) {
         auto cost_total = calculator_1[count];
         auto cost_total_fp = fptype(cost_total)/100.0;
         auto cost_per = fptype(cost_total)/fptype(100*count);
         printf("cost of %d calculators = $%.2Lf total, $%LF per calc\n",count,cost_total_fp,cost_per);
     }
+    */
     return 0;
 }

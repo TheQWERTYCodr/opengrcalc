@@ -34,9 +34,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.762,
-          "height": 1.524,
-          "width": 1.524
+          "drill": 0.0,
+          "height": 2.2,
+          "width": 1.2
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
@@ -195,7 +195,12 @@
     "equivalence_files": []
   },
   "erc": {
-    "erc_exclusions": [],
+    "erc_exclusions": [
+      "pin_not_connected|-190500|444500|b9502c28-6915-42df-9eee-34570745f467|00000000-0000-0000-0000-000000000000|||",
+      "pin_not_connected|-215900|312420|28e89731-451b-474c-b85e-aa62a043d874|00000000-0000-0000-0000-000000000000|||",
+      "pin_not_connected|-292100|495300|933646ec-f8b7-4b71-8a50-ccb6c31940c4|00000000-0000-0000-0000-000000000000|||",
+      "pin_not_connected|-317500|363220|69b0d8b9-db3b-4097-83d9-54ebff600983|00000000-0000-0000-0000-000000000000|||"
+    ],
     "meta": {
       "version": 0
     },
@@ -379,12 +384,12 @@
       "different_unit_net": "error",
       "duplicate_reference": "error",
       "duplicate_sheet_names": "error",
-      "endpoint_off_grid": "warning",
+      "endpoint_off_grid": "ignore",
       "extra_units": "error",
       "global_label_dangling": "warning",
-      "hier_label_mismatch": "error",
+      "hier_label_mismatch": "ignore",
       "label_dangling": "error",
-      "lib_symbol_issues": "warning",
+      "lib_symbol_issues": "ignore",
       "missing_bidi_pin": "warning",
       "missing_input_pin": "warning",
       "missing_power_pin": "error",
@@ -395,9 +400,9 @@
       "no_connect_dangling": "warning",
       "pin_not_connected": "error",
       "pin_not_driven": "error",
-      "pin_to_pin": "error",
+      "pin_to_pin": "ignore",
       "power_pin_not_driven": "error",
-      "similar_labels": "warning",
+      "similar_labels": "ignore",
       "simulation_model_issue": "ignore",
       "unannotated": "error",
       "unit_value_mismatch": "error",
@@ -431,23 +436,6 @@
         "via_diameter": 0.25,
         "via_drill": 0.125,
         "wire_width": 6
-      },
-      {
-        "bus_width": 12,
-        "clearance": 0.125,
-        "diff_pair_gap": 0.25,
-        "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.25,
-        "line_style": 0,
-        "microvia_diameter": 0.125,
-        "microvia_drill": 0.0625,
-        "name": "button ground pads",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.125,
-        "via_diameter": 0.25,
-        "via_drill": 0.125,
-        "wire_width": 6
       }
     ],
     "meta": {
@@ -455,7 +443,12 @@
     },
     "net_colors": null,
     "netclass_assignments": null,
-    "netclass_patterns": []
+    "netclass_patterns": [
+      {
+        "netclass": "Default",
+        "pattern": "/mathboard/gnd"
+      }
+    ]
   },
   "pcbnew": {
     "last_paths": {
@@ -520,8 +513,16 @@
       "DISP_CONN"
     ],
     [
+      "6e8089f1-98a7-4a34-9467-281c3360b050",
+      "mathboard"
+    ],
+    [
       "038ec4aa-1483-4cfe-aa73-fad3940d0ca5",
       "MAIN_KEYPAD"
+    ],
+    [
+      "3d1dca1b-b16a-4d8e-9f33-389e8416b4fa",
+      "qwerty_keyboard"
     ],
     [
       "f08fb428-2088-4156-b3bb-06fd3e00abd7",

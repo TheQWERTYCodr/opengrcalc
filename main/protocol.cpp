@@ -11,7 +11,7 @@ The secondary processor directly controls:
 - the screen
 - the USB-C port
 
-The processors are connected over UART. Their communication is as follows:
+The processors are connected over UART. Their communication is described in this document.
 */
 
 #include <algorithm>

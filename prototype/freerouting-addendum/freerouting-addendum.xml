@@ -2,7 +2,7 @@
 <export version="E">
   <design>
     <source>/home/qwerty/opengrcalc/prototype/combined-freerouting/combined-freerouting.kicad_sch</source>
-    <date>Tue 27 Feb 2024 08:52:44 AM EST</date>
+    <date>Mon 19 Feb 2024 08:13:55 PM EST</date>
     <tool>Eeschema 7.0.10</tool>
     <sheet number="1" name="/" tstamps="/">
       <title_block>
@@ -256,16 +256,6 @@
       <sheetpath names="/" tstamps="/"/>
       <tstamps>8d012d19-27a9-48cb-aaec-bc49f74f00b8</tstamps>
     </comp>
-    <comp ref="R2">
-      <value>10k</value>
-      <libsource lib="Device" part="R" description="Resistor"/>
-      <property name="Sheetname" value=""/>
-      <property name="Sheetfile" value="combined-freerouting.kicad_sch"/>
-      <property name="ki_description" value="Resistor"/>
-      <property name="ki_keywords" value="R res resistor"/>
-      <sheetpath names="/" tstamps="/"/>
-      <tstamps>9bccce10-725f-4aca-91be-aa81330147fd</tstamps>
-    </comp>
     <comp ref="R3">
       <value>27</value>
       <footprint>Resistor_SMD:R_1206_3216Metric</footprint>
@@ -287,6 +277,17 @@
       <property name="ki_keywords" value="R res resistor"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamps>5d2c6b31-f4fa-4b85-8b90-00624548c636</tstamps>
+    </comp>
+    <comp ref="R6">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_1206_3216Metric</footprint>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="combined-freerouting.kicad_sch"/>
+      <property name="ki_description" value="Resistor"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5b0e70ac-ec5e-4fe9-8141-16b5dc175edf</tstamps>
     </comp>
     <comp ref="R7">
       <value>10k</value>
@@ -333,7 +334,7 @@
       <tstamps>18dadb1b-43db-404c-a7af-2c17db7c8154</tstamps>
     </comp>
     <comp ref="SW2">
-      <value>PWR_SWITCH</value>
+      <value>MODE_SWITCH</value>
       <footprint>Button_Switch_SMD:SW_SPDT_CK-JS102011SAQN</footprint>
       <libsource lib="Switch" part="SW_SPDT" description="Switch, single pole double throw"/>
       <property name="Sheetname" value=""/>
@@ -440,7 +441,7 @@
       <tstamps>87520f15-2806-4820-8257-af62305b3c97</tstamps>
     </comp>
     <comp ref="U17">
-      <value>MODE_BTN</value>
+      <value>RESET_BTN</value>
       <footprint>Button_Switch_SMD:SW_Tactile_SPST_NO_Straight_CK_PTS636Sx25SMTRLFS</footprint>
       <libsource lib="custom" part="button" description=""/>
       <property name="Sheetname" value=""/>
@@ -2822,6 +2823,7 @@
       <node ref="R16" pin="2" pintype="passive"/>
       <node ref="R5" pin="1" pintype="passive"/>
       <node ref="R9" pin="1" pintype="passive"/>
+      <node ref="SW2" pin="1" pinfunction="A" pintype="passive"/>
       <node ref="U10" pin="3" pinfunction="V_{CC}" pintype="passive"/>
       <node ref="U11" pin="1" pinfunction="IN" pintype="power_in"/>
       <node ref="U12" pin="12" pinfunction="A0" pintype="bidirectional"/>
@@ -3016,6 +3018,7 @@
     <net code="44" name="/GLOBAL_RESET_PIN">
       <node ref="J3" pin="13" pinfunction="13" pintype="passive"/>
       <node ref="R17" pin="2" pintype="passive"/>
+      <node ref="U17" pin="2" pinfunction="2" pintype="passive"/>
       <node ref="U8" pin="3" pinfunction="ON" pintype="input"/>
     </net>
     <net code="45" name="/GPIO_I2C_INT">
@@ -3222,7 +3225,7 @@
     </net>
     <net code="85" name="/MODE_PIN">
       <node ref="J3" pin="7" pinfunction="7" pintype="passive"/>
-      <node ref="R2" pin="2" pintype="passive"/>
+      <node ref="R6" pin="1" pintype="passive"/>
       <node ref="U18" pin="3" pinfunction="1D" pintype="input"/>
     </net>
     <net code="86" name="/PWR_RP2040">
@@ -3881,7 +3884,7 @@
       <node ref="R11" pin="1" pintype="passive"/>
     </net>
     <net code="203" name="Net-(SW2-B)">
-      <node ref="R2" pin="1" pintype="passive"/>
+      <node ref="R6" pin="2" pintype="passive"/>
       <node ref="SW2" pin="2" pinfunction="B" pintype="passive"/>
     </net>
     <net code="204" name="Net-(U1-QSPI_SCLK)">
@@ -3963,7 +3966,6 @@
     </net>
     <net code="222" name="VCC">
       <node ref="R17" pin="1" pintype="passive"/>
-      <node ref="SW2" pin="1" pinfunction="A" pintype="passive"/>
       <node ref="U3" pin="4" pinfunction="VOUT" pintype="power_in"/>
       <node ref="U8" pin="1" pinfunction="IN" pintype="power_in"/>
     </net>
@@ -4072,43 +4074,40 @@
     <net code="257" name="unconnected-(U14-EPAD-Pad25)">
       <node ref="U14" pin="25" pinfunction="EPAD" pintype="unspecified+no_connect"/>
     </net>
-    <net code="258" name="unconnected-(U17-Pad2)">
-      <node ref="U17" pin="2" pinfunction="2" pintype="passive"/>
-    </net>
-    <net code="259" name="unconnected-(U18-3D-Pad7)">
+    <net code="258" name="unconnected-(U18-3D-Pad7)">
       <node ref="U18" pin="7" pinfunction="3D" pintype="input+no_connect"/>
     </net>
-    <net code="260" name="unconnected-(U18-3Q-Pad6)">
+    <net code="259" name="unconnected-(U18-3Q-Pad6)">
       <node ref="U18" pin="6" pinfunction="3Q" pintype="output+no_connect"/>
     </net>
-    <net code="261" name="unconnected-(U18-4D-Pad8)">
+    <net code="260" name="unconnected-(U18-4D-Pad8)">
       <node ref="U18" pin="8" pinfunction="4D" pintype="input+no_connect"/>
     </net>
-    <net code="262" name="unconnected-(U18-4Q-Pad9)">
+    <net code="261" name="unconnected-(U18-4Q-Pad9)">
       <node ref="U18" pin="9" pinfunction="4Q" pintype="output+no_connect"/>
     </net>
-    <net code="263" name="unconnected-(U18-5D-Pad13)">
+    <net code="262" name="unconnected-(U18-5D-Pad13)">
       <node ref="U18" pin="13" pinfunction="5D" pintype="input+no_connect"/>
     </net>
-    <net code="264" name="unconnected-(U18-5Q-Pad12)">
+    <net code="263" name="unconnected-(U18-5Q-Pad12)">
       <node ref="U18" pin="12" pinfunction="5Q" pintype="output+no_connect"/>
     </net>
-    <net code="265" name="unconnected-(U18-6D-Pad14)">
+    <net code="264" name="unconnected-(U18-6D-Pad14)">
       <node ref="U18" pin="14" pinfunction="6D" pintype="input+no_connect"/>
     </net>
-    <net code="266" name="unconnected-(U18-6Q-Pad15)">
+    <net code="265" name="unconnected-(U18-6Q-Pad15)">
       <node ref="U18" pin="15" pinfunction="6Q" pintype="output+no_connect"/>
     </net>
-    <net code="267" name="unconnected-(U18-7D-Pad17)">
+    <net code="266" name="unconnected-(U18-7D-Pad17)">
       <node ref="U18" pin="17" pinfunction="7D" pintype="input+no_connect"/>
     </net>
-    <net code="268" name="unconnected-(U18-7Q-Pad16)">
+    <net code="267" name="unconnected-(U18-7Q-Pad16)">
       <node ref="U18" pin="16" pinfunction="7Q" pintype="output+no_connect"/>
     </net>
-    <net code="269" name="unconnected-(U18-8D-Pad18)">
+    <net code="268" name="unconnected-(U18-8D-Pad18)">
       <node ref="U18" pin="18" pinfunction="8D" pintype="input+no_connect"/>
     </net>
-    <net code="270" name="unconnected-(U18-8Q-Pad19)">
+    <net code="269" name="unconnected-(U18-8Q-Pad19)">
       <node ref="U18" pin="19" pinfunction="8Q" pintype="output+no_connect"/>
     </net>
   </nets>

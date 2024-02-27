@@ -221,7 +221,7 @@ auto usbc = item("USB-C", {
 	{100,6177},
 	{250,14039}
 });
-auto edgeport = item("Edge Port", {
+auto edge_port = item("Edge Port", {
 	{1,406},
 	{10,3617},
 	{25,8996},
@@ -274,8 +274,25 @@ auto microsd = item("microSD Slot", {
 	{250,6306},
 	{500,12272}
 });
-auto charger = item("Battery Charger", {
-	{}
+auto rp2040 = item("RP2040", {{1,70}});
+auto esp32 = item("ESP32-C6-MINI-1-H4", {{1,257}});
+auto bat_charger = item("Battery Charger", {
+	{1,89},
+	{10,780},
+	{25,1832},
+	{100,5979},
+	{250,13885},
+	{500,23634},
+	{1000,37814}
+});
+auto boost_conv = item("Boost Converter", {
+	{1,58},
+	{10,492},
+	{25,1149},
+	{100,3676},
+	{250,8534},
+	{500,14443},
+	{1000,22321}
 });
 auto calculator = fromComponents("Calculator", {
 	{resistor_1k,2},
@@ -286,7 +303,17 @@ auto calculator = fromComponents("Calculator", {
 	{button,67},
 	{diode,65},
 	{pwr_switch,1},
-	
+	{usbc,1},
+	{edge_port,2},
+	{thermistor,1},
+	{latch,1},
+	{display,1},
+	{disp_connector,1},
+	{microsd,1},
+	{rp2040,1},
+	{esp32,1},
+	{bat_charger,1},
+	{boost_conv,1}
 });
 int main(int argc, char *argv[]) {
 	/*

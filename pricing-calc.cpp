@@ -1,9 +1,12 @@
+// Copyright 2024 TheQWERTYCoder (theqwertycoder@gmail.com)
+
 #include <array>
 #include <exception>
 #include <format>
 #include <initializer_list>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <string>
 #include <variant>
 #include <list>
@@ -12,228 +15,231 @@
 #include <cmath>
 #include <stdexcept>
 using namespace std;
-typedef long long inttype;
-typedef unsigned long long uinttype;
-typedef char chrtype;
+constexpr bool AUTOFILL_CACHE = false;
+typedef int64_t inttype;
+typedef uint64_t uinttype;
+typedef uint8_t chrtype;
 typedef long double fptype;
 typedef inttype pricetype;
 typedef std::string string;
-class pricemap { // maps quantities to prices
-public:
-	typedef std::map<inttype,pricetype> underlyingtype;
-	std::map<inttype,pricetype> underlying;
-	pricetype& get(inttype i) {
-		try
-		{
-			return underlying.at(i);
-		}
-		catch(const std::exception& e)
-		{
-			auto iter = underlying.upper_bound(i);
-			if (iter==underlying.begin()) {
-				throw std::out_of_range(std::format("invalid index {} passed to get",i));
-			}
-			auto p = *(--iter);
-			if (p.first==0) {
-				throw std::out_of_range("div by 0");
-			}
-			this->underlying.insert(std::make_pair(i,p.second*i/pricetype(p.first)));
-			return this->underlying[i];
-		}
-	}
-	pricemap() : underlying() {}
-	pricemap(std::map<inttype,pricetype> x) : underlying(x) {}
-	pricemap(std::initializer_list<std::pair<const inttype,pricetype>> x) : pricemap(std::map<inttype,pricetype>(x)) {}
-	pricetype& operator[](inttype i) {
-		if (i<0) {
-			// maybe we can add sell support in the future, but until then:
-			throw std::out_of_range("quantity < 0 in operator[]");
-		}
-		try
-		{
-			return get(i);
-		}
-		catch(const std::out_of_range& e)
-		{
-			return underlying[i]; // auto-creates ref for us
-		}
-	}
-	std::map<inttype,pricetype>::iterator begin() {return this->underlying.begin();}
-	std::map<inttype,pricetype>::iterator end() {return this->underlying.end();}
-	int count(inttype idx) {return this->underlying.count(idx);}
-};
+typedef std::map<inttype,pricetype> pricemap;
+
 class req {
 public:
 	string name;
-	pricemap prices;
-	virtual std::map<inttype,pricetype>::iterator begin() {return this->prices.begin();}
-	virtual std::map<inttype,pricetype>::iterator end() {return this->prices.end();}
-	virtual pricetype &get(inttype x) {return this->prices.get(x);}
-	pricetype &operator[](int idx) {
-		try {
-			return this->get(idx);
-		} catch (std::exception e) {
-			return this->prices[idx];
-		}
-	}
-	req(string name, std::map<inttype,pricetype> prices) : name(name),prices(prices) {}
-	req(string name, pricemap prices) : name(name),prices(prices) {}
-	req(const char* name, pricemap prices) : name(name),prices(prices) {}
-	req(string name) : name(name),prices() {}
-	req() : name(),prices() {}
+	pricemap cache;
+	std::map<inttype,const std::exception> invalid;
+	pricemap::iterator begin() {return this->cache.begin();}
+	pricemap::iterator end() {return this->cache.end();}
+	virtual const pricetype get(const inttype x) {return this->cache.at(x);}
+	req(const string name) : name(name),cache() {}
+	req(const char *name) : name(name),cache() {}
+	req() : name(),cache() {}
 };
+typedef std::shared_ptr<req> reqptr;
 
 class item : public req {
 public:
-	std::map<inttype,pricetype> bulk;
-	std::map<inttype,pricetype> cache;
+	pricemap prices;
+	pricemap bulk;
 	bool hasBulk;
-	item(string name, pricemap prices) : req(name,prices),hasBulk(false),cache({{0,0}}) {}
-	item(string name, pricemap prices, std::map<inttype,pricetype> bulkprices) : req(name,prices),bulk(bulkprices),hasBulk(true),cache({{0,0}}) {}
-	item(string name) : req(name),hasBulk(false),cache({{0,0}}) {}
-	pricetype &get(inttype x) {
-		try {return cache.at(x);} catch (std::exception e) {}
-		pricetype y = prices.get(x);
-		if (hasBulk) {
-			auto i = bulk.upper_bound(x);
-			if (i!=bulk.end()) {
-				auto [k,v] = *i;
+	item(const string name, const pricemap prices) : req(name),prices(prices),bulk(),hasBulk(false) {}
+	item(const string name, const pricemap prices, const pricemap bulkprices) : req(name),prices(prices),bulk(bulkprices),hasBulk(true) {}
+	item(const string name) : req(name),prices(),bulk(),hasBulk(false) {}
+	const pricetype get(const inttype x) {
+		if (x==0) cache.emplace(x,0);
+		try {
+			return cache.at(x);
+		} catch (const std::exception e) {}
+		if (invalid.contains(x)) throw invalid.at(x);
+		try {
+			auto i = prices.upper_bound(x); // first qty > x
+			pricetype y = i->second;
+			if (i!=prices.begin()) {
+				auto j = i;
+				--j;
+				const auto [k,v] = *j;
+				y = std::ceil(fptype(v*x)/k);
+			}
+			if (i!=prices.end()) {
+				const auto [k,v] = *i;
 				y=std::min(y,v);
 			}
-			if (i!=bulk.begin()) {
-				--i;
-				auto [k,v] = *i;
-				y=std::min(y,v+get(x-k));
+			if (hasBulk) {
+				auto i = bulk.upper_bound(x); // first qty > x
+				if (i!=bulk.begin()) {
+					auto j = i;
+					--j;
+					const auto [k,v] = *j;
+					if (k>=x) y=std::min(y,v);
+					else y=std::min(y,v+get(x-k));
+				}
+				if (i!=bulk.end()) {
+					const auto [k,v] = *i;
+					y=std::min(y,v);
+				}
 			}
+			cache.emplace(x,y);
+			return y;
+		} catch (const std::exception e) {
+			invalid.emplace(x,e);
+			throw;
 		}
-		cache[x]=y;
-		return cache[x];
 	}
 };
 class multreq : public req {
 public:
-	std::shared_ptr<req> underlying;
+	reqptr underlying;
 	inttype count;
-	multreq(string name, std::shared_ptr<req> underlying, inttype count) : req(name), underlying(underlying), count(count) {
-		pricemap dup = underlying->prices;
-		for (auto x : dup) {
-			auto a = x.first/count;
-			try {get(a);} catch (std::exception e) {}
-			try {get(a+1);} catch (std::exception e) {}
+	multreq(string name, reqptr underlying, inttype count) : req(name), underlying(underlying), count(count) {
+		if constexpr (AUTOFILL_CACHE) {
+			pricemap dup = underlying->cache;
+			for (auto x : dup) {
+				auto a = x.first/count;
+				try {get(a);} catch (std::exception e) {}
+				try {get(a+1);} catch (std::exception e) {}
+			}
 		}
 	}
-	pricetype &get(inttype x) {
+	const pricetype get(const inttype x) {
 		try {
-			return this->prices.underlying.at(x);
-		} catch (std::exception e) {
-			prices[x] = this->underlying->get(x*count);
-			return prices[x];
+			return cache.at(x);
+		} catch (std::exception e) {}
+		if (invalid.contains(x)) throw invalid.at(x);
+		try {
+			const pricetype y = underlying->get(x*count);
+			cache.emplace(x,y);
+			return y;
+		} catch (const std::exception e) {
+			invalid.emplace(x,e);
+			throw;
 		}
 	}
 };
 class anyreq : public req {
 public:
-	std::vector<req*> reqs;
-	anyreq(string name, std::vector<req*> reqs) : req(name), reqs(reqs) {
-		for (auto x : this->reqs) {
-			pricemap prices_dup = x->prices;
-			for (auto y : prices_dup) {
-				get(y.first);
+	std::vector<reqptr> reqs;
+	anyreq(string name, std::vector<reqptr> reqs) : req(name), reqs(reqs) {
+		if constexpr (AUTOFILL_CACHE) {
+			for (auto x : this->reqs) {
+				pricemap cache_dup = x->cache;
+				for (auto y : cache_dup) {
+					get(y.first);
+				}
 			}
 		}
 	}
-	pricetype &get(inttype x) {
+	const pricetype get(const inttype x) {
 		try {
-			return this->prices.underlying.at(x);
-		} catch (std::exception e) {
+			return cache.at(x);
+		} catch (std::exception e) {}
+		if (invalid.contains(x)) throw invalid.at(x);
+		try {
 			pricetype y;
+			bool flag = true;
 			for (auto r : reqs) {
 				try {
 					y=r->get(x);
+					flag = false;
 					break;
-				} catch (std::exception e) {
-					continue;
-				}
+				} catch (std::exception e) {}
 			}
+			if (flag) throw std::out_of_range(std::format("anyreq: no available sellers @ qty {}",x));
 			for (auto r : reqs) {
 				try {
 					y=std::min(r->get(x),y);
-				} catch (std::exception e) {
-					continue;
-				}
+				} catch (std::exception e) {}
 			}
-			prices[x]=y;
-			return prices[x];
+			cache.emplace(x,y);
+			return y;
+		} catch (const std::exception e) {
+			invalid.emplace(x,e);
+			throw;
 		}
 	}
 };
 class allreq : public req {
 public:
-	std::vector<std::shared_ptr<req>> reqs;
-	allreq(string name, std::vector<std::shared_ptr<req>> reqs) : req(name), reqs(reqs) {
-		for (auto x : this->reqs) {
-			pricemap prices_dup = x->prices;
-			for (auto y : prices_dup) {
-				try {get(y.first);} catch (std::exception e) {}
+	std::vector<reqptr> reqs;
+	allreq(string name, std::vector<reqptr> reqs) : req(name), reqs(reqs) {
+		if constexpr (AUTOFILL_CACHE) {
+			for (auto x : this->reqs) {
+				pricemap cache_dup = x->cache;
+				for (auto y : cache_dup) {
+					try {get(y.first);} catch (std::exception e) {}
+				}
 			}
 		}
 	}
-	pricetype &get(inttype x) {
+	const pricetype get(const inttype x) {
 		try {
-			return prices.underlying.at(x);
-		} catch (std::exception e) {
+			return cache.at(x);
+		} catch (std::exception e) {}
+		if (invalid.contains(x)) throw invalid.at(x);
+		try {
 			pricetype y = 0;
 			for (auto r : reqs) {
 				y += r->get(x);
 			}
-			prices[x]=y;
-			return prices[x];
+			cache.emplace(x,y);
+			return y;
+		} catch (std::exception e) {
+			invalid.emplace(x,e);
+			throw;
 		}
 	}
 };
 
 class tax : public req {
 public:
-	std::shared_ptr<req> underlying;
+	reqptr underlying;
 	fptype mult;
-	tax(std::shared_ptr<req> x, fptype tax) : req(x->name),underlying(x),mult(1.0l+tax) {
-		for (auto [k,v] : *x) {
-			get(k);
+	tax(reqptr x, fptype tax) : req(x->name),underlying(x),mult(1.0l+tax) {
+		if constexpr (AUTOFILL_CACHE) {
+			for (auto [k,v] : *x) {
+				get(k);
+			}
 		}
 	}
-	pricetype &get(inttype x) {
-		pricetype tmp = std::ceil(underlying->get(x)*mult);
-		prices[x]=tmp;
-		return prices[x];
+	const pricetype get(const inttype x) {
+		try {return cache.at(x);} catch (const std::exception e) {}
+		if (invalid.contains(x)) throw invalid.at(x);
+		try {
+			const pricetype y = std::ceil(underlying->get(x)*mult);
+			cache.emplace(x,y);
+			return y;
+		} catch (const std::exception e) {
+			invalid.emplace(x,e);
+			throw;
+		}
 	}
 };
 
 class constReq : public req {
 public:
 	pricetype price;
-	constReq(std::string name, pricetype x) : req(name,pricemap({{1,x}})), price(x) {}
-	virtual pricetype &get(inttype x) override {
+	constReq(std::string name, pricetype x) : req(name), price(x) {}
+	const pricetype get(const inttype x) {
 		return this->price;
 	}
 };
 
-auto fromComponents(std::string name, std::vector<std::pair<std::shared_ptr<req>,inttype>> a) {
-	std::vector<std::shared_ptr<req>> x;
+auto fromComponents(std::string name, std::vector<std::pair<reqptr,inttype>> a) {
+	std::vector<reqptr> x;
 	for (auto b : a) {
 		if (b.second==0) continue;
 		if (b.second==1) {
-			x.push_back(std::shared_ptr<req>(b.first));
+			x.push_back(reqptr(b.first));
 			continue;
 		}
-		std::shared_ptr<req> tmp{new multreq{std::format("{}x {}",b.second,b.first->name),b.first,static_cast<inttype>(b.second)}};
+		reqptr tmp{new multreq{std::format("{}x {}",b.second,b.first->name),b.first,static_cast<inttype>(b.second)}};
 		x.push_back(tmp);
 	}
-	std::shared_ptr<req> tmp = std::shared_ptr<req>(new allreq(name,x));
+	reqptr tmp = reqptr(new allreq(name,x));
 	return tmp;
 }
 
-std::vector<item> items;
-std::shared_ptr<req> resistor_1k = std::shared_ptr<req>(new item("Resistor - 1K", {
+reqptr resistor_1k = reqptr(new item("Resistor - 1K", {
 	{1,10},
 	{10,20},
 	{50,63},
@@ -248,7 +254,7 @@ std::shared_ptr<req> resistor_1k = std::shared_ptr<req>(new item("Resistor - 1K"
 	{50000,15250},
 	{125000,34625}
 }));
-std::shared_ptr<req> resistor_27 = std::shared_ptr<req>(new item("Resistor - 27", {
+reqptr resistor_27 = reqptr(new item("Resistor - 27", {
 	{1,10},
 	{10,21},
 	{50,66},
@@ -263,63 +269,107 @@ std::shared_ptr<req> resistor_27 = std::shared_ptr<req>(new item("Resistor - 27"
 	{50000,15900},
 	{125000,36000}
 }));
-std::shared_ptr<req> resistor_10k = std::shared_ptr<req>(new item("Resistor - 10K", {
+reqptr resistor_10k = reqptr(new item("Resistor - 10K", {
 	{1,10},
 	{10,20},
 	{50,62},
 	{100,103},
 	{500,350},
 	{1000,601}
+}, {
+	{5000,2180},
+	{10000,3860},
+	{25000,8275},
+	{35000,11270},
+	{50000,14950},
+	{125000,33875}
 }));
-std::shared_ptr<req> resistor_5k1 = std::shared_ptr<req>(new item("Resistor - 5K1", {
+reqptr resistor_5k1 = reqptr(new item("Resistor - 5K1", {
 	{1,10},
 	{10,21},
 	{50,66},
 	{100,110},
 	{500,372},
 	{1000,639}
+}, {
+	{5000,2320},
+	{10000,4100},
+	{25000,8800},
+	{35000,11970},
+	{50000,15900},
+	{125000,36000}
 }));
-std::shared_ptr<req> resistor_2k = std::shared_ptr<req>(new item("Resistor - 2K", {
+reqptr resistor_2k = reqptr(new item("Resistor - 2K", {
 	{1,10},
 	{10,21},
 	{50,66},
 	{100,110},
 	{500,372},
 	{1000,639}
+}, {
+	{5000,2320},
+	{10000,4100},
+	{25000,8800},
+	{35000,11970},
+	{50000,15900},
+	{125000,36000}
 }));
-std::shared_ptr<req> button = std::shared_ptr<req>(new item("Button", {
-	{1,15},
-	{10,146},
-	{25,346},
-	{100,1258},
-	{250,2956},
-	{500,5408}
+reqptr button = reqptr(new item("Button", {
+	{1,16},
+	{10,155},
+	{25,368},
+	{100,1338},
+	{250,3145},
+	{500,5754}
+}, {
+	{1500,14453},
+	{3000,28104},
+	{7500,66240},
+	{10500,87119}
 }));
-std::shared_ptr<req> diode = std::shared_ptr<req>(new item("Diode", {
+reqptr diode = reqptr(new item("Diode", {
 	{1,13},
 	{10,92},
 	{100,494},
 	{500,1942},
 	{1000,2697},
 	{2000,4468}
+}, {
+	{5000,10560},
+	{10000,17980},
+	{25000,41575},
+	{50000,71900},
+	{125000,149500}
 }));
-std::shared_ptr<req> pwr_switch = std::shared_ptr<req>(new item("Power Switch", {
+reqptr pwr_switch = reqptr(new item("Power Switch", {
 	{1,71},
 	{10,688},
 	{25,1654},
 	{100,5742},
 	{250,13099},
 	{500,24345}
+}, {
+	{1000,43662},
+	{3000,123048},
+	{5000,190525},
+	{10000,354590}
 }));
-std::shared_ptr<req> usbc = std::shared_ptr<req>(new item("USB-C", {
+reqptr usbc = reqptr(new item("USB-C", {
 	{1,81},
 	{10,688},
 	{25,1650},
 	{50,3229},
 	{100,6177},
 	{250,14039}
+}, {
+	{800,39309},
+	{1600,67387},
+	{2400,97711},
+	{5600,220130},
+	{8000,298752},
+	{20000,730020}
 }));
-std::shared_ptr<req> edge_port = std::shared_ptr<req>(new item("Edge Port", {
+reqptr edge_port = reqptr(new item("Edge Port", {
 	{1,406},
 	{10,3617},
 	{25,8996},
@@ -330,7 +380,7 @@ std::shared_ptr<req> edge_port = std::shared_ptr<req>(new item("Edge Port", {
 	{1000,263891},
 	{2500,608980}
 }));
-std::shared_ptr<req> thermistor = std::shared_ptr<req>(new item("Thermistor", {
+reqptr thermistor = reqptr(new item("Thermistor", {
 	{1,10},
 	{5,37},
 	{10,63},
@@ -340,8 +390,11 @@ std::shared_ptr<req> thermistor = std::shared_ptr<req>(new item("Thermistor", {
 	{500,1825},
 	{1000,3055},
 	{5000,13580}
+}, {
+	{15000,36285},
+	{30000,71280}
 }));
-std::shared_ptr<req> latch = std::shared_ptr<req>(new item("D Latch", {
+reqptr latch = reqptr(new item("D Latch", {
 	{1,52},
 	{10,418},
 	{25,955},
@@ -349,11 +402,16 @@ std::shared_ptr<req> latch = std::shared_ptr<req>(new item("D Latch", {
 	{250,6444},
 	{500,10666},
 	{1000,15998}
+}, {
+	{2000,29330},
+	{6000,82656},
+	{10000,128880},
+	{50000,568850}
 }));
-std::shared_ptr<req> display = std::shared_ptr<req>(new item("Display", {
+reqptr display = reqptr(new item("Display", {
 	{1,609}
 }));
-std::shared_ptr<req> disp_connector = std::shared_ptr<req>(new item("Display Connector", {
+reqptr disp_connector = reqptr(new item("Display Connector", {
 	{1,47},
 	{10,406},
 	{25,927},
@@ -362,8 +420,14 @@ std::shared_ptr<req> disp_connector = std::shared_ptr<req>(new item("Display Con
 	{250,7633},
 	{500,14539},
 	{1000,23989}
+}, {
+	{3000,65424},
+	{6000,126492},
+	{9000,176652},
+	{15000,290055},
+	{30000,567030}
 }));
-std::shared_ptr<req> microsd = std::shared_ptr<req>(new item("microSD Slot", {
+reqptr microsd = reqptr(new item("microSD Slot", {
 	{1,35},
 	{10,348},
 	{25,852},
@@ -371,10 +435,14 @@ std::shared_ptr<req> microsd = std::shared_ptr<req>(new item("microSD Slot", {
 	{100,2727},
 	{250,6306},
 	{500,12272}
+}, {
+	{1000,23180},
+	{5000,112490},
+	{10000,218160}
 }));
-std::shared_ptr<req> rp2040 = std::shared_ptr<req>(new item("RP2040", {{1,70}}));
-std::shared_ptr<req> esp32 = std::shared_ptr<req>(new item("ESP32-C6-MINI-1-H4", {{1,257}}));
-std::shared_ptr<req> bat_charger = std::shared_ptr<req>(new item("Battery Charger", {
+reqptr rp2040 = reqptr(new item("RP2040", {{1,70}}));
+reqptr esp32 = reqptr(new item("ESP32-C6-MINI-1-H4", {{1,257}}));
+reqptr bat_charger = reqptr(new item("Battery Charger", {
 	{1,89},
 	{10,780},
 	{25,1832},
@@ -382,8 +450,13 @@ std::shared_ptr<req> bat_charger = std::shared_ptr<req>(new item("Battery Charge
 	{250,13885},
 	{500,23634},
 	{1000,37814}
+}, {
+	{3000,102807},
+	{6000,191436},
+	{15000,460860},
+	{30000,886290}
 }));
-std::shared_ptr<req> boost_conv = std::shared_ptr<req>(new item("Boost Converter", {
+reqptr boost_conv = reqptr(new item("Boost Converter", {
 	{1,58},
 	{10,492},
 	{25,1149},
@@ -391,8 +464,13 @@ std::shared_ptr<req> boost_conv = std::shared_ptr<req>(new item("Boost Converter
 	{250,8534},
 	{500,14443},
 	{1000,22321}
+}, {
+	{3000,61053},
+	{6000,114234},
+	{15000,265875},
+	{30000,504180}
 }));
-std::shared_ptr<req> flash = std::shared_ptr<req>(new item("Flash", {
+reqptr flash = reqptr(new item("Flash", {
 	{1,74},
 	{10,676},
 	{25,1669},
@@ -402,15 +480,20 @@ std::shared_ptr<req> flash = std::shared_ptr<req>(new item("Flash", {
 	{1080,60378},
 	{5040,256637}
 }));
-std::shared_ptr<req> io_exp = std::shared_ptr<req>(new item("IO Expander", {
+reqptr io_exp = reqptr(new item("IO Expander", {
 	{1,98},
 	{10,873},
 	{25,2072},
 	{100,6806},
 	{250,15906},
 	{500,28113}
+}, {
+	{1500,66584},
+	{3000,124290},
+	{7500,295193},
+	{10500,397730}
 }));
-std::shared_ptr<req> pwr_ctrl = std::shared_ptr<req>(new item("Power Controller", {
+reqptr pwr_ctrl = reqptr(new item("Power Controller", {
 	{1,38},
 	{10,290},
 	{25,653},
@@ -418,8 +501,15 @@ std::shared_ptr<req> pwr_ctrl = std::shared_ptr<req>(new item("Power Controller"
 	{250,3798},
 	{500,6171},
 	{1000,9494}
+}, {
+	{3000,25635},
+	{6000,48420},
+	{15000,110370},
+	{30000,206490},
+	{75000,462825},
+	{150000,890100}
 }));
-std::shared_ptr<req> latch_pulse = std::shared_ptr<req>(new item("Latch Pulse", {
+reqptr latch_pulse = reqptr(new item("Latch Pulse", {
 	{1,87},
 	{10,765},
 	{25,1797},
@@ -427,8 +517,13 @@ std::shared_ptr<req> latch_pulse = std::shared_ptr<req>(new item("Latch Pulse", 
 	{250,13624},
 	{500,23190},
 	{1000,37103}
+}, {
+	{3000,100875},
+	{6000,187836},
+	{15000,452190},
+	{30000,869610}
 }));
-std::shared_ptr<req> mode_mux = std::shared_ptr<req>(new item("Mode Multiplexer", {
+reqptr mode_mux = reqptr(new item("Mode Multiplexer", {
 	{1,53},
 	{10,451},
 	{25,1052},
@@ -436,8 +531,13 @@ std::shared_ptr<req> mode_mux = std::shared_ptr<req>(new item("Mode Multiplexer"
 	{250,7812},
 	{500,13221},
 	{1000,20432}
+}, {
+	{2000,37260},
+	{6000,104568},
+	{10000,162260},
+	{50000,751200}
 }));
-std::shared_ptr<req> usb_mux = std::shared_ptr<req>(new item("USB Multiplexer", {
+reqptr usb_mux = reqptr(new item("USB Multiplexer", {
 	{1,94},
 	{10,832},
 	{25,1953},
@@ -445,9 +545,14 @@ std::shared_ptr<req> usb_mux = std::shared_ptr<req>(new item("USB Multiplexer", 
 	{250,12600},
 	{500,23940},
 	{1000,36539}
+}, {
+	{4000,136076},
+	{8000,262072},
+	{12000,377988},
+	{28000,873264}
 }));
-std::shared_ptr<req> clock_crystal = std::shared_ptr<req>(new item("Clock Crystal 12MHz", {{1,15}}));
-std::shared_ptr<req> pcbs = std::shared_ptr<req>(new item("PCBs", {
+reqptr clock_crystal = reqptr(new item("Clock Crystal 12MHz", {{1,15}}));
+reqptr pcbs = reqptr(new item("PCBs", {{1,9778}}, {
 	{5,9778},
 	{10,10670},
 	{15,12146},
@@ -489,14 +594,16 @@ std::shared_ptr<req> pcbs = std::shared_ptr<req>(new item("PCBs", {
 	{9000,1409915},
 	{10000,1565980}
 }));
-std::shared_ptr<req> battery_1Ah = std::shared_ptr<req>(new item("Battery 1Ah", {{1,890}}));
-std::shared_ptr<req> battery_2Ah = std::shared_ptr<req>(new item("Battery 2Ah", {{1,1250}}));
-std::shared_ptr<req> battery_3Ah = std::shared_ptr<req>(new item("Battery 3Ah", {{1,1450}}));
-std::shared_ptr<req> tariff = std::shared_ptr<req>(new item("Digi-Key Tariff", {
+reqptr battery_1Ah = reqptr(new item("Battery 1Ah", {{1,890}}));
+reqptr battery_2Ah = reqptr(new item("Battery 2Ah", {{1,1250}}));
+reqptr battery_3Ah = reqptr(new item("Battery 3Ah", {{1,1450}}));
+reqptr tariff = reqptr(new item("Digi-Key Tariff", {
+	{1,494},
 	{5,2221},
+	{10,4233},
 	{50,19047}
 }));
-std::shared_ptr<req> shipping = std::shared_ptr<req>(new constReq("Digi-Key Shipping Cost", 699));
+reqptr shipping = reqptr(new constReq("Digi-Key Shipping Cost", 699));
 auto calculator_components = fromComponents("Calculator Components", {
 	{resistor_1k,2},
 	{resistor_27,2},
@@ -528,15 +635,16 @@ auto calculator_components = fromComponents("Calculator Components", {
 	//{tariff,1},
 	//{shipping,1}
 });
-auto taxed_components = std::shared_ptr<req>(new tax(calculator_components,0.06));
-auto calculator = std::shared_ptr<req>(new allreq("Calculator",{taxed_components,pcbs}));
+auto taxed_components = reqptr(new tax(calculator_components,0.06));
+auto calculator = reqptr(new allreq("Calculator",{taxed_components,pcbs}));
 int main(int argc, char *argv[]) {
-	pricemap dup = pcbs->prices;
-	for (auto [k,_] : dup) {
+	//pricemap dup = pcbs->prices;
+	//for (int k : {1,2,5,10,20,50,100,200,500,1000,2000,5000}) {
+		int k = 10;
 		auto v = calculator->get(k);
 		auto cost_total_fp = fptype(v)/100.0;
 		auto cost_per = fptype(v)/fptype(100*k);
-		std::cout << std::format("{:8d} calculators = ${:10.2f} total, ${:12.9f} per\n",k,cost_total_fp,cost_per);
-	}
+		std::cout << std::format("{:4d}x = ${:12.2f} total, ${:12.8f} per\n",k,cost_total_fp,cost_per);
+	//}
 	return 0;
 }

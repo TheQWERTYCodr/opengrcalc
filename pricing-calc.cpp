@@ -1,4 +1,4 @@
-// Copyright 2024 TheQWERTYCoder (theqwertycoder@gmail.com)
+// Copyright 2024 opengrcalc (opengrcalc@gmail.com)
 
 #include <array>
 #include <exception>
